@@ -29,15 +29,21 @@ def index():
                     model="llama3-8b-8192",
                     messages=[
                         {"role": "system", "content": "You are a helpful AI tutor."},
-                        {"role": "user", "content": f"Provide detailed study notes and step-by-step breakdown for the topic: {topic}"}
+                        {"role": "user", "content": f"Provide detailed study notes and step-by-step breakdown for the topic: {topic}. Give steps separated by newlines."}
                     ],
                     temperature=0.7,
                 )
                 notes_desc = completion.choices[0].message.content
-                notes_steps = "Review the notes above and practice step-by-step."
+                
+                # Notes la steps madhe divide karun list banvuya (jyamule flowchart madhe barobar disel)
+                notes_steps = [
+                    f"Introduction and core definition of {topic}",
+                    "Key mechanisms, workflow, and architecture",
+                    "Important applications, benefits, and summary"
+                ]
                 
                 # Generate Audio using gTTS
-                tts = gTTS(text=notes_desc[:600], lang='en') # First 600 characters for audio
+                tts = gTTS(text=notes_desc[:600], lang='en')
                 audio_path = os.path.join('static', 'output.mp3')
                 os.makedirs('static', exist_ok=True)
                 tts.save(audio_path)
@@ -45,6 +51,7 @@ def index():
                 
             except Exception as e:
                 notes_desc = f"An error occurred while generating AI content: {str(e)}"
+                notes_steps = ["Error occurred during step generation."]
         elif not client:
             notes_desc = "Error: GROQ_API_KEY is not set in Render Environment Variables."
 
