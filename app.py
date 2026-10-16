@@ -44,6 +44,7 @@ def index():
                 notes_steps = ["Introduction and core concept of " + topic, "Working mechanism and architecture", "Real-world applications and summary"]
 
             # Generate Audio using gTTS
+            os.makedirs("static", exist_ok=True)  # He ohl add kara (folder nsel tar banvel)
             tts_lang = 'mr' if selected_lang == 'Marathi' else ('hi' if selected_lang == 'Hindi' else 'en')
             tts = gTTS(text=full_response[:600], lang=tts_lang)
             audio_filename = "script_audio.mp3"
