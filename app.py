@@ -26,7 +26,7 @@ def index():
             try:
                 # Groq API call to generate notes/content
                 completion = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model="llama3-70b-8192",
                     messages=[
                         {"role": "system", "content": "You are a helpful AI tutor."},
                         {"role": "user", "content": f"Provide detailed study notes and step-by-step breakdown for the topic: {topic}. Give steps separated by newlines."}
