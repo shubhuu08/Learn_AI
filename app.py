@@ -1,11 +1,12 @@
 import os
+import re
 from flask import Flask, render_template, request, url_for
 from groq import Groq
 from gtts import gTTS
 
 app = Flask(__name__)
 
-# Direct Groq API key (kiwa environment variable)
+# Direct Groq API key
 GROQ_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
 
@@ -22,31 +23,57 @@ def index():
         selected_lang = request.form.get("language", "English")
         
         try:
-            # Groq API call to get detailed notes and steps
-            prompt = f"Provide detailed educational notes and a step-by-step breakdown (at least 3-4 steps) for the topic: {topic}. Language: {selected_lang}. Format it clearly with paragraphs for summary and numbered steps for the breakdown."
+            # Ekach prompt madhe notes, steps ani audio script sathi vegli information magvtoy
+            single_prompt = f"""Provide detailed educational study notes, a flowchart, and a short spoken explanation script for the topic: {topic}. Language: {selected_lang}.
+            Please format your response strictly using these three tags:
+            [NOTES]
+            Write comprehensive study details notes and example .
+            [STEPS]
+            Write 4 to 5 short sequential steps for a flowchart, each starting with a number (e.g., 1., 2., etc.).
+            [AUDIO]
+            Write a concise, engaging spoken explanation (3-4 sentences) specifically crafted to be listened to as an audio summary, written differently from the notes."""
             
             completion = client.chat.completions.create(
                 model="openai/gpt-oss-20b",
                 messages=[
                     {"role": "system", "content": "You are an expert AI tutor."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": single_prompt}
                 ],
                 temperature=0.7,
             )
             
             full_response = completion.choices[0].message.content
-            notes_desc = full_response
             
-            # Simple splitting for flowchart steps (dividing by newlines or bullet points)
-            lines = [line.strip() for line in full_response.split('\n') if line.strip()]
-            notes_steps = [line for line in lines if line.startswith(('1.', '2.', '3.', '4.', '5.', '-', '*'))][:5]
-            if not notes_steps:
-                notes_steps = ["Introduction and core concept of " + topic, "Working mechanism and architecture", "Real-world applications and summary"]
+            # Response la [NOTES], [STEPS] ani [AUDIO] madhe split karne
+            notes_desc = ""
+            steps_text = ""
+            audio_text = ""
+            
+            if "[STEPS]" in full_response and "[AUDIO]" in full_response:
+                parts = full_response.split("[STEPS]")
+                notes_desc = parts[0].replace("[NOTES]", "").strip()
+                remaining = parts[1]
+                steps_part, audio_part = remaining.split("[AUDIO]")
+                steps_text = steps_part.strip()
+                audio_text = audio_part.strip()
+            else:
+                notes_desc = full_response
+                steps_text = full_response
+                audio_text = full_response[:400]
 
-            # Generate Audio using gTTS
-            os.makedirs("static", exist_ok=True)  # He ohl add kara (folder nsel tar banvel)
+            # Flowchart steps extract karne
+            notes_steps = [line.strip() for line in steps_text.split('\n') if line.strip() and any(line.strip().startswith(str(i)) for i in range(1, 10))]
+            if not notes_steps:
+                notes_steps = [line.strip() for line in steps_text.split('\n') if line.strip()][:5]
+            if not notes_steps:
+                notes_steps = ["Introduction to " + topic, "Core working mechanism", "Real-world applications and summary"]
+
+            # Audio generation using dedicated clean audio text
+            os.makedirs("static", exist_ok=True)
+            clean_audio_text = re.sub(r'[*#_`\-]', ' ', audio_text)
+            
             tts_lang = 'mr' if selected_lang == 'Marathi' else ('hi' if selected_lang == 'Hindi' else 'en')
-            tts = gTTS(text=full_response[:600], lang=tts_lang)
+            tts = gTTS(text=clean_audio_text, lang=tts_lang)
             audio_filename = "script_audio.mp3"
             audio_path = os.path.join("static", audio_filename)
             tts.save(audio_path)
